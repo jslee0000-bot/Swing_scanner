@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Swing Trade Scanner — Daily 5</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0c0e12;
+    --bg2: #13161c;
+    --bg3: #1a1e27;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --muted: #7a8094;
+    --accent: #4f9cf9;
+    --green: #3ecf8e;
+    --amber: #f5a623;
+    --red: #f4645f;
+    --purple: #a78bfa;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    --font-sans: 'Inter', system-ui, sans-serif;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: var(--font-sans); min-height: 100vh; padding: 2rem; }
+
+  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
+  .header-left h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: #fff; }
+  .header-left .sub { font-size: 13px; color: var(--muted); margin-top: 4px; font-family: var(--font-mono); }
+  .date-badge { font-size: 11px; color: var(--accent); background: rgba(79,156,249,0.1); border: 0.5px solid rgba(79,156,249,0.25); padding: 4px 10px; border-radius: 99px; font-family: var(--font-mono); margin-top: 6px; display: inline-block; }
+
+  .scan-btn { padding: 10px 24px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer; letter-spacing: 0.02em; transition: opacity 0.15s, transform 0.1s; white-space: nowrap; }
+  .scan-btn:hover { opacity: 0.85; }
+  .scan-btn:active { transform: scale(0.97); }
+  .scan-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .key-section { margin-bottom: 1.5rem; background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+  .key-section label { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; display: block; margin-bottom: 8px; }
+  .key-row { display: flex; gap: 8px; }
+  .key-input { flex: 1; background: var(--bg3); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); padding: 8px 12px; color: var(--text); font-size: 13px; font-family: var(--font-mono); outline: none; }
+  .key-input:focus { border-color: var(--accent); }
+  .save-btn { padding: 8px 16px; background: var(--bg3); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-size: 12px; cursor: pointer; white-space: nowrap; }
+  .save-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .status { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: 14px; }
+  .status.loading { color: var(--accent); }
+  .loader { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-right: 4px; animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+
+  .card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1.25rem; transition: border-color 0.2s; position: relative; overflow: hidden; }
+  .card:hover { border-color: var(--border2); }
+  .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: var(--radius) var(--radius) 0 0; }
+  .card.bullish::before { background: var(--green); }
+  .card.strong-buy::before { background: var(--accent); }
+
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+  .ticker { font-size: 22px; font-weight: 700; color: #fff; font-family: var(--font-mono); letter-spacing: -0.02em; }
+  .company { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .score-pill { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .sector-tag { font-size: 10px; background: rgba(167,139,250,0.12); color: var(--purple); border: 0.5px solid rgba(167,139,250,0.25); padding: 3px 8px; border-radius: 99px; white-space: nowrap; }
+
+  .trade-types { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .trade-pill { font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 99px; letter-spacing: 0.04em; }
+  .pill-spot { background: rgba(62,207,142,0.12); color: var(--green); border: 0.5px solid rgba(62,207,142,0.25); }
+  .pill-calls { background: rgba(79,156,249,0.12); color: var(--accent); border: 0.5px solid rgba(79,156,249,0.25); }
+  .pill-leaps { background: rgba(245,166,35,0.12); color: var(--amber); border: 0.5px solid rgba(245,166,35,0.25); }
+
+  .levels { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .level { background: var(--bg3); border-radius: var(--radius-sm); padding: 6px 8px; }
+  .level-lbl { font-size: 9px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 2px; }
+  .level-val { font-size: 13px; font-weight: 600; font-family: var(--font-mono); }
+  .level-val.entry { color: var(--text); }
+  .level-val.target { color: var(--green); }
+  .level-val.stop { color: var(--red); }
+
+  .thesis-section { margin-bottom: 10px; }
+  .thesis-lbl { font-size: 10px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 5px; }
+  .thesis-text { font-size: 12px; color: var(--text); line-height: 1.6; }
+
+  .catalysts { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .catalyst { font-size: 11px; color: var(--muted); display: flex; gap: 6px; align-items: flex-start; }
+  .catalyst::before { content: '→'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+
+  .card-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 0.5px solid var(--border); }
+  .timeframe { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+  .conviction { font-size: 11px; font-weight: 600; }
+  .conviction.high { color: var(--green); }
+  .conviction.medium { color: var(--amber); }
+
+  .options-detail { background: var(--bg3); border-radius: var(--radius-sm); padding: 8px 10px; margin-top: 10px; font-size: 11px; color: var(--muted); font-family: var(--font-mono); line-height: 1.6; }
+
+  .error-box { background: rgba(244,100,95,0.08); border: 0.5px solid rgba(244,100,95,0.25); border-radius: var(--radius); padding: 1rem; color: var(--red); font-size: 13px; }
+
+  .footer { margin-top: 2rem; font-size: 11px; color: var(--muted); text-align: center; border-top: 0.5px solid var(--border); padding-top: 1rem; line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>Swing Trade Scanner</h1>
+    <div class="sub">AI-powered · 2–4 week holds · Spot & Options</div>
+    <div class="date-badge" id="dateBadge">—</div>
+  </div>
+  <button class="scan-btn" id="scanBtn" onclick="runScan()">Generate Today's 5 Picks ↗</button>
+</div>
+
+<div class="key-section">
+  <label>Anthropic API Key (stored locally in browser)</label>
+  <div class="key-row">
+    <input type="password" class="key-input" id="apiKey" placeholder="sk-ant-..." />
+    <button class="save-btn" onclick="saveKey()">Save key</button>
+  </div>
+</div>
+
+<div id="statusArea" class="status">Enter your Anthropic API key above, then hit "Generate Today's 5 Picks"</div>
+<div id="cardsArea" class="cards"></div>
+
+<div class="footer">
+  Data sourced via live web search · Not financial advice · Always do your own research before trading.<br>
+  Refresh daily for updated picks. LEAPS = 6–18 month expiry calls, typically 0.70Δ+ ITM.
+</div>
+
+<script>
+  const today = new Date();
+  document.getElementById('dateBadge').textContent = today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+  const storedKey = localStorage.getItem('anthropic_key');
+  if (storedKey) document.getElementById('apiKey').value = storedKey;
+
+  function saveKey() {
+    const k = document.getElementById('apiKey').value.trim();
+    if (k) { localStorage.setItem('anthropic_key', k); alert('Key saved!'); }
+  }
+
+  async function runScan() {
+    const key = document.getElementById('apiKey').value.trim();
+    if (!key) { alert('Please enter your Anthropic API key first.'); return; }
+
+    const btn = document.getElementById('scanBtn');
+    const status = document.getElementById('statusArea');
+    const cards = document.getElementById('cardsArea');
+
+    btn.disabled = true;
+    btn.textContent = 'Scanning markets...';
+    cards.innerHTML = '';
+    status.className = 'status loading';
+    status.innerHTML = '<span class="loader"></span> Searching for today\'s best swing setups — pulling live data...';
+
+    const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+    const prompt = `Today is ${dateStr}. You are a professional swing trader. Use web search to find the 5 best swing trade stock opportunities right now for 2-4 week holding periods.
+
+For EACH stock, research:
+- Recent price action, chart setup, technical levels
+- Fundamental catalysts (earnings, product launches, sector rotation)
+- Valuation vs peers
+- Options market activity (unusual call buying, IV, open interest)
+- Analyst sentiment and recent upgrades/downgrades
+
+Return ONLY a JSON array with exactly 5 objects. No preamble, no markdown, no code fences.
+
+Each object must have these exact keys:
+{
+  "ticker": "AAPL",
+  "company": "Apple Inc.",
+  "sector": "Technology",
+  "tradeTypes": ["spot", "calls"],
+  "conviction": "high",
+  "entry": "$185-188",
+  "target": "$210",
+  "stop": "$178",
+  "holdWeeks": "2-3",
+  "thesis": "2-3 sentence thesis explaining why this is a strong swing trade right now based on fundamentals, technical setup, and catalysts.",
+  "catalysts": ["Catalyst 1", "Catalyst 2", "Catalyst 3"],
+  "optionsPlay": "Specific options strategy: e.g. Buy $190 calls exp 6 weeks out, paying $4.50 debit. Or Buy LEAPS $180C Jan 2026. Include why.",
+  "upside": "12%",
+  "riskReward": "3.2"
+}
+
+tradeTypes can include any of: spot, calls, leaps
+conviction must be: high or medium
+Make picks diverse across sectors. Focus on liquid large/mid caps. Base everything on CURRENT real data from your web search today.`;
+
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 4000,
+          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error?.message || 'API error ' + resp.status);
+      }
+
+      const data = await resp.json();
+
+      // Extract text content from response
+      const textBlocks = data.content.filter(b => b.type === 'text');
+      const fullText = textBlocks.map(b => b.text).join('');
+
+      // Parse JSON - strip any fences if present
+      let clean = fullText.replace(/```json|```/g, '').trim();
+      // Find the JSON array
+      const start = clean.indexOf('[');
+      const end = clean.lastIndexOf(']');
+      if (start === -1 || end === -1) throw new Error('Could not parse picks from response');
+      const picks = JSON.parse(clean.slice(start, end + 1));
+
+      status.style.display = 'none';
+      renderCards(picks);
+
+    } catch (e) {
+      status.className = 'status';
+      status.innerHTML = `<div class="error-box">Error: ${e.message}<br><small>Check your API key and try again.</small></div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Generate Today's 5 Picks ↗";
+    }
+  }
+
+  function renderCards(picks) {
+    const area = document.getElementById('cardsArea');
+    area.innerHTML = '';
+    picks.forEach((p, i) => {
+      const types = (p.tradeTypes || ['spot']).map(t => {
+        if (t === 'spot') return '<span class="trade-pill pill-spot">SPOT</span>';
+        if (t === 'calls') return '<span class="trade-pill pill-calls">CALLS</span>';
+        if (t === 'leaps') return '<span class="trade-pill pill-leaps">LEAPS</span>';
+        return '';
+      }).join('');
+
+      const catalysts = (p.catalysts || []).map(c => `<div class="catalyst">${c}</div>`).join('');
+
+      const card = document.createElement('div');
+      card.className = `card ${p.conviction === 'high' ? 'bullish' : 'strong-buy'}`;
+      card.style.animationDelay = (i * 0.07) + 's';
+      card.innerHTML = `
+        <div class="card-top">
+          <div>
+            <div class="ticker">${p.ticker || '—'}</div>
+            <div class="company">${p.company || ''}</div>
+          </div>
+          <div class="score-pill">
+            <span class="sector-tag">${p.sector || ''}</span>
+          </div>
+        </div>
+        <div class="trade-types">${types}</div>
+        <div class="levels">
+          <div class="level"><div class="level-lbl">Entry</div><div class="level-val entry">${p.entry || '—'}</div></div>
+          <div class="level"><div class="level-lbl">Target</div><div class="level-val target">${p.target || '—'}</div></div>
+          <div class="level"><div class="level-lbl">Stop</div><div class="level-val stop">${p.stop || '—'}</div></div>
+        </div>
+        <div class="thesis-section">
+          <div class="thesis-lbl">Thesis</div>
+          <div class="thesis-text">${p.thesis || ''}</div>
+        </div>
+        ${catalysts ? `<div class="catalysts"><div class="thesis-lbl">Catalysts</div>${catalysts}</div>` : ''}
+        ${p.optionsPlay ? `<div class="options-detail">${p.optionsPlay}</div>` : ''}
+        <div class="card-footer">
+          <span class="timeframe">Hold: ${p.holdWeeks || '2-4'} weeks · R/R ${p.riskReward || '—'}x · +${p.upside || '—'} upside</span>
+          <span class="conviction ${p.conviction || 'medium'}">${(p.conviction || 'medium').toUpperCase()}</span>
+        </div>
+      `;
+      area.appendChild(card);
+    });
+  }
+</script>
+</body>
+</html>
